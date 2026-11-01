@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="hi"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Ultra Room Calling - No Login Direct Call</title><meta name="theme-color" content="#050816">
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}body{font-family:'Segoe UI',system-ui;background:#050816;color:#fff;min-height:100vh}
+.glow{position:fixed;inset:0;background:radial-gradient(600px 400px at 20% 0%,#00e5ff33,transparent),radial-gradient(600px 500px at 90% 100%,#ff00aa33,transparent);z-index:-1}
+.wrap{max-width:480px;margin:0 auto;padding:18px 16px 40px}.logo{font-size:38px;font-weight:900;text-align:center;background:linear-gradient(90deg,#00e5ff,#a855f7,#ff00aa);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.sub{text-align:center;color:#9fb0ff;font-size:13px;margin:6px 0 16px}
+.card{background:linear-gradient(160deg,#121a3a,#0b1130);border:1px solid #2a3a7a;border-radius:22px;padding:18px;box-shadow:0 0 28px #00e5ff22;margin-bottom:14px}
+input{width:100%;padding:15px;margin:8px 0;border-radius:14px;border:1px solid #2a3a7a;background:#080f2a;color:#fff;font-size:18px;outline:none;text-align:center;letter-spacing:2px;font-weight:700;text-transform:uppercase}
+.btn{width:100%;padding:15px;border:0;border-radius:14px;background:linear-gradient(90deg,#00c6ff,#0072ff);color:#fff;font-weight:800;font-size:16px;margin-top:8px;cursor:pointer}
+.btn2{background:linear-gradient(90deg,#ff0080,#ff8a00)} .btn3{background:#1e2a5a;border:1px solid #444}
+.videoBox{position:relative;height:360px;background:#000;border-radius:20px;overflow:hidden;border:1px solid #333}video{width:100%;height:100%;object-fit:cover}#local{position:absolute;right:10px;bottom:10px;width:110px;height:150px;border:3px solid #fff;border-radius:14px;object-fit:cover}
+.controls{display:flex;justify-content:center;gap:14px;margin:16px 0}.cbtn{width:58px;height:58px;border-radius:50%;border:0;font-size:22px;color:#fff}.cbtn.red{background:#ff1744}.cbtn.blue{background:#1e2a5a}.cbtn.green{background:#00c853}
+.status{font-size:13px;color:#00ff88;text-align:center;margin:6px}.keypad{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.key{background:#111a42;border:1px solid #2a3a7a;border-radius:16px;padding:14px 0;text-align:center;font-size:22px;font-weight:800}.key span{font-size:10px;color:#8ea2ff;display:block}
+.info{background:#071233;padding:12px;border-radius:12px;font-size:12px;line-height:1.7;color:#c7d2ff}
+</style></head><body><div class="glow"></div><div class="wrap">
+<div class="logo">ULTRA 📞 ROOM</div><div class="sub">No Login • No OTP • Direct Room ID Call</div>
+
+<div id="joinCard" class="card">
+<b>🔑 Room ID se Direct Call</b><p style="font-size:12px;color:#9fb0ff;margin:6px 0">Dono device me SAME Room ID daalo — call direct connect hogi</p>
+<input id="roomId" placeholder="ROOM ID - jaise: SHIV123" maxlength="12" value="">
+<div style="display:flex;gap:8px"><button class="btn" onclick="quickRoom()">🎲 Random Room</button><button class="btn btn3" onclick="copyRoom()">📋 Copy Room</button></div>
+<div style="margin-top:12px"><label style="font-size:13px">Apna Naam (optional)</label><input id="myName" placeholder="APNA NAAM" style="font-size:16px"></div>
+<button class="btn" onclick="startCall(false)">📞 AUDIO CALL START</button>
+<button class="btn btn2" onclick="startCall(true)">📹 VIDEO CALL START</button>
+<button class="btn btn3" onclick="checkPermission()">🎤📷 MIC / CAMERA PERMISSION CHECK</button>
+<div class="status" id="permStatus">Permission: Not Checked</div>
+<div class="info"><b>Mic/Camera problem ka solution:</b><br>1. Ye file <b>HTTPS</b> pe hi kholo — http ya file:// pe browser permission block karta hai<br>2. Browser me Site Settings > Camera/Mic > <b>Allow</b> karo<br>3. Android App me WebView me <b>RECORD_AUDIO + CAMERA</b> permission pehle se on hai<br>4. Agar fir bhi deny aaye to neeche <b>Permission Check</b> dabao</div>
+</div>
+
+<div id="callCard" class="card" style="display:none">
+<div style="display:flex;justify-content:space-between"><b id="callTitle">Calling...</b><span id="timer">00:00</span></div>
+<div class="videoBox"><video id="remote" autoplay playsinline></video><video id="local" autoplay muted playsinline></video></div>
+<div class="status" id="callStatus">Connecting...</div>
+<div class="controls">
+<button class="cbtn blue" id="muteBtn" onclick="toggleMute()">🎤</button>
+<button class="cbtn blue" id="camBtn" onclick="toggleCam()">📷</button>
+<button class="cbtn blue" onclick="toggleKeypad()">⌨</button>
+<button class="cbtn red" onclick="endCall()">📞</button>
+</div>
+<div id="keypadBox" style="display:none" class="keypad"></div>
+<button class="btn btn3" onclick="endCall()">Call Cut Karo</button>
+</div>
+
+<div class="card"><b>Kaise use karein? (2 Device)</b><div class="info">1. Dono mobile me ye hi page kholo<br>2. Dono me same Room ID daalo — jaise <b>SHIV123</b><br>3. Ek device <b>CREATE ROOM</b> dabaye, dusra <b>JOIN ROOM</b><br>4. Is code me auto hai — pehla CREATE karega, dusra auto JOIN hoga<br>5. Call direct lag jayegi, koi login nahi chahiye</div></div>
+</div>
+
+<script>
+// Firebase config - TUMHARA WALA
+const firebaseConfig={apiKey:"AIzaSyBdbhSYO-nDqQ5tIehcraBq8g4RgNIciLI",authDomain:"ultra-calling.firebaseapp.com",projectId:"ultra-calling",storageBucket:"ultra-calling.firebasestorage.app",messagingSenderId:"487761265796",appId:"1:487761265796:web:a855a927c43aa490deaed1"};
+firebase.initializeApp(firebaseConfig); const db=firebase.database();
+// TURN + STUN
+const ICE={iceServers:[{urls:"stun:stun.l.google.com:19302"},{urls:"turn:openrelay.metered.ca:80",username:"openrelayproject",credential:"openrelayproject"},{urls:"turn:openrelay.metered.ca:443",username:"openrelayproject",credential:"openrelayproject"}]};
+let pc=null,localStream=null,roomRef=null,secs=0,timerInt=null,muted=false,camOff=false,isVideo=false;
+
+function quickRoom(){let r='ROOM'+Math.floor(1000+Math.random()*9000);document.getElementById('roomId').value=r}
+function copyRoom(){let v=document.getElementById('roomId').value;if(!v)return alert('Pehle Room ID daalo');navigator.clipboard.writeText(v);alert('Copied: '+v)}
+async function checkPermission(){
+  // IMPORTANT: HTTPS check
+  if(location.protocol!=='https:' && location.hostname!=='localhost' && location.hostname!==''){
+    alert('⚠️ Mic/Camera ka problem isi wajah se aata hai!\n\nTum file:// ya http:// pe khol rahe ho.\nBrowser wahan mic/camera block karta hai.\n\nSOLUTION:\n1. Is file ko Netlify / Firebase Hosting pe daalo\n2. https:// link se kholo\n3. Ya Android App (WebView) me chalao\n\nFir bhi try kar raha hu permission lene ki...');
+  }
+  try{
+    let s=await navigator.mediaDevices.getUserMedia({audio:true,video:true});
+    s.getTracks().forEach(t=>t.stop());
+    document.getElementById('permStatus').textContent='✅ Permission: ALLOWED - Mic & Camera OK';
+    document.getElementById('permStatus').style.color='#00ff88';
+    alert('✅ Permission MIL GAYI! Ab call kar sakte ho');
+  }catch(e){
+    document.getElementById('permStatus').textContent='❌ Permission DENIED: '+e.message;
+    document.getElementById('permStatus').style.color='#ff5252';
+    alert('❌ Permission Denied\n\nBrowser ke address bar me Lock icon > Site Settings > Camera/Mic > Allow karo aur page reload karo');
+  }
+}
+
+async function startCall(video){
+  isVideo=video;
+  let room=document.getElementById('roomId').value.trim().toUpperCase();
+  if(!room){alert('Room ID daalo pehle');return}
+  if(room.length<3){alert('Room ID min 3 char');return}
+  document.getElementById('roomId').value=room;
+  // Permission pehle se hi mang lo - isse call ke time problem nahi hogi
+  try{localStream=await navigator.mediaDevices.getUserMedia({audio:true,video:video});}
+  catch(e){alert('Mic/Camera permission allow karo. HTTPS pe kholo. Error: '+e.message);checkPermission();return}
+  document.getElementById('local').srcObject=localStream;
+  document.getElementById('joinCard').style.display='none';
+  document.getElementById('callCard').style.display='block';
+  document.getElementById('callTitle').textContent=(video?'📹 Video':'📞 Audio')+' Room: '+room;
+  roomRef=db.ref('rooms/'+room);
+  pc=new RTCPeerConnection(ICE);
+  localStream.getTracks().forEach(t=>pc.addTrack(t,localStream));
+  pc.ontrack=e=>{document.getElementById('remote').srcObject=e.streams[0];document.getElementById('callStatus').textContent='✅ CONNECTED - Baat karo';};
+  pc.onicecandidate=e=>{if(e.candidate){roomRef.child('callerCandidates').push(e.candidate.toJSON())}};
+  // Check if room already exists - agar hai to JOIN, nahi to CREATE
+  let snap=await roomRef.child('offer').get();
+  if(snap.exists()){
+    // JOINER
+    document.getElementById('callStatus').textContent='Joining room...';
+    let offer=snap.val();await pc.setRemoteDescription(new RTCSessionDescription(offer));
+    let ans=await pc.createAnswer();await pc.setLocalDescription(ans);await roomRef.child('answer').set({type:ans.type,sdp:ans.sdp});
+    roomRef.child('callerCandidates').on('child_added',s=>{let c=new RTCIceCandidate(s.val());pc.addIceCandidate(c)});
+  }else{
+    // CREATOR
+    document.getElementById('callStatus').textContent='Room Created - Dusre device ka wait...';
+    let off=await pc.createOffer();await pc.setLocalDescription(off);await roomRef.child('offer').set({type:off.type,sdp:off.sdp});
+    roomRef.child('answer').on('value',async s=>{let v=s.val();if(v&&!pc.currentRemoteDescription){await pc.setRemoteDescription(new RTCSessionDescription(v))}});
+    roomRef.child('answerCandidates').on('child_added',s=>{pc.addIceCandidate(new RTCIceCandidate(s.val()))});
+  }
+  pc.onicecandidate=e=>{if(e.candidate){let key=snap.exists()?'answerCandidates':'callerCandidates';roomRef.child(key).push(e.candidate.toJSON())}};
+  secs=0;timerInt=setInterval(()=>{secs++;document.getElementById('timer').textContent=String(Math.floor(secs/60)).padStart(2,'0')+':'+String(secs%60).padStart(2,'0')},1000);
+}
+function toggleMute(){muted=!muted;localStream.getAudioTracks().forEach(t=>t.enabled=!muted);document.getElementById('muteBtn').style.background=muted?'#ff1744':'#1e2a5a';document.getElementById('muteBtn').textContent=muted?'🔇':'🎤'}
+function toggleCam(){camOff=!camOff;localStream.getVideoTracks().forEach(t=>t.enabled=!camOff);document.getElementById('camBtn').style.background=camOff?'#ff1744':'#1e2a5a'}
+function toggleKeypad(){let k=document.getElementById('keypadBox');k.style.display=k.style.display=='none'?'grid':'none'}
+function endCall(){if(pc)pc.close();if(localStream)localStream.getTracks().forEach(t=>t.stop());clearInterval(timerInt);if(roomRef)roomRef.remove();document.getElementById('callCard').style.display='none';document.getElementById('joinCard').style.display='block'}
+// Keypad
+let keys=['1','2','3','4','5','6','7','8','9','*','0','#'];let kp=document.getElementById('keypadBox');keys.forEach(k=>{let d=document.createElement('div');d.className='key';d.textContent=k;d.onclick=()=>{if(navigator.vibrate)navigator.vibrate(20)};kp.appendChild(d)});
+if(location.protocol!=='https:'&&location.hostname!=='localhost')console.warn('HTTPS needed');
+</script></body></html>
